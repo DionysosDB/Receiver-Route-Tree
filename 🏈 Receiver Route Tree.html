@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🏈 Receiver Route Tree</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; background: #0d1117; color: white; min-height: 100vh; overflow-x: hidden; }
+  header { background: linear-gradient(135deg, #1a2a1a, #0f3f0f); padding: 14px 16px; text-align: center; border-bottom: 3px solid #FFD700; }
+  header h1 { font-size: 1.35em; color: #FFD700; letter-spacing: 1px; }
+  header p { font-size: 0.78em; color: #aaa; margin-top: 3px; }
+  .container { max-width: 480px; margin: 0 auto; padding: 12px; }
+  .route-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 12px; }
+  .route-btn { background: #161b22; border: 2px solid #30363d; color: white; padding: 7px 3px; border-radius: 10px; cursor: pointer; text-align: center; font-size: 0.68em; transition: all 0.2s; user-select: none; -webkit-tap-highlight-color: transparent; }
+  .route-btn:hover { border-color: #FFD700; background: #1c2d1c; }
+  .route-btn.active { background: #1c2d1c; box-shadow: 0 0 10px rgba(255,215,0,0.3); }
+  .route-btn .num { font-size: 1.5em; font-weight: 900; display: block; line-height: 1.2; }
+  .route-btn .name { display: block; font-weight: 600; font-size: 0.9em; }
+  .show-all-btn { grid-column: span 2; background: #1a1a2e; border: 2px solid #4a4a8a; color: #aab; font-size: 0.75em; padding: 7px; border-radius: 10px; cursor: pointer; transition: all 0.2s; -webkit-tap-highlight-color: transparent; }
+  .show-all-btn.active { border-color: #FFD700; color: #FFD700; background: #1a1a3e; }
+  canvas#fieldCanvas { width: 100%; border-radius: 14px; display: block; border: 3px solid #2a4a2a; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+  .controls { margin: 12px 0; background: #161b22; border-radius: 12px; padding: 14px; border: 1px solid #30363d; }
+  .controls-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  #playBtn { background: linear-gradient(135deg, #e94560, #c73652); border: none; color: white; padding: 10px 16px; border-radius: 10px; cursor: pointer; font-size: 0.95em; font-weight: bold; min-width: 88px; -webkit-tap-highlight-color: transparent; }
+  #playBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+  #resetBtn { background: #30363d; border: none; color: white; padding: 10px 12px; border-radius: 10px; cursor: pointer; font-size: 1em; -webkit-tap-highlight-color: transparent; }
+  .speed-btns { display: flex; gap: 5px; }
+  .speed-btn { background: #21262d; border: 1px solid #30363d; color: #ccc; padding: 5px 9px; border-radius: 6px; cursor: pointer; font-size: 0.75em; -webkit-tap-highlight-color: transparent; }
+  .speed-btn.active { background: #2d5a2d; border-color: #4CAF50; color: #9f9; }
+  .slider-label { font-size: 0.72em; color: #8b949e; margin-bottom: 5px; }
+  #progressSlider { width: 100%; accent-color: #FFD700; cursor: pointer; height: 8px; }
+  .info-panel { background: #161b22; border-radius: 12px; padding: 15px; border: 1px solid #30363d; border-left: 4px solid #FFD700; margin-bottom: 12px; }
+  .route-title { font-size: 1.15em; font-weight: bold; color: #FFD700; margin-bottom: 7px; }
+  .route-description { font-size: 0.875em; line-height: 1.6; color: #cdd9e5; }
+  .select-prompt { color: #8b949e; font-style: italic; font-size: 0.9em; }
+  .formation-key { background: #161b22; border-radius: 12px; padding: 14px; border: 1px solid #30363d; margin-bottom: 12px; }
+  .formation-key h3 { color: #4ECDC4; font-size: 0.9em; margin-bottom: 8px; }
+  .key-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .key-item { display: flex; align-items: center; gap: 8px; font-size: 0.78em; }
+  .key-badge { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.7em; font-weight: bold; flex-shrink: 0; border: 2px solid rgba(255,255,255,0.3); }
+  .legend { background: #161b22; border-radius: 12px; padding: 14px; border: 1px solid #30363d; margin-bottom: 12px; }
+  .legend h3 { color: #FFD700; font-size: 0.9em; margin-bottom: 10px; }
+  .legend-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; }
+  .legend-item { display: flex; align-items: center; gap: 7px; font-size: 0.78em; color: #cdd9e5; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .tips { background: #161b22; border-radius: 12px; padding: 14px; border: 1px solid #30363d; }
+  .tips h3 { color: #4ECDC4; font-size: 0.9em; margin-bottom: 8px; }
+  .tips li { font-size: 0.8em; color: #cdd9e5; padding: 3px 0; list-style: none; }
+  .tips li::before { content: "⚡ "; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🏈 Receiver Route Tree</h1>
+  <p>Tap route to animate • Show All for tree diagram</p>
+</header>
+<div class="container">
+  <div class="route-grid" id="routeButtons"></div>
+  <canvas id="fieldCanvas"></canvas>
+  <div class="controls">
+    <div class="controls-row">
+      <button id="playBtn" disabled>▶ Play</button>
+      <button id="resetBtn">↺</button>
+      <div class="speed-btns">
+        <button class="speed-btn" data-speed="0.3">0.5×</button>
+        <button class="speed-btn active" data-speed="0.6">1×</button>
+        <button class="speed-btn" data-speed="1.2">2×</button>
+      </div>
+    </div>
+    <div class="slider-label">Route Progress — drag to scrub</div>
+    <input type="range" id="progressSlider" min="0" max="100" value="0">
+  </div>
+  <div class="info-panel">
+    <div class="route-title" id="routeTitle">Select a Route</div>
+    <div id="routeDesc" class="select-prompt">Tap any route (1–9) to animate it, or "Show All" for the complete route tree diagram.</div>
+  </div>
+  <div class="formation-key">
+    <h3>📐 Formation Key</h3>
+    <div class="key-grid">
+      <div class="key-item"><div class="key-badge" style="background:#fff;color:#000;border-color:#aaa">X</div><span>Wide Receiver — runs routes</span></div>
+      <div class="key-item"><div class="key-badge" style="background:#1a3a8a;color:#fff">QB</div><span>Quarterback — snaps &amp; throws</span></div>
+      <div class="key-item"><div class="key-badge" style="background:#4a8a2a;color:#fff">C</div><span>Center — snaps ball to QB</span></div>
+      <div class="key-item"><div class="key-badge" style="background:#7a3a1a;color:#fff">RB</div><span>Running Back — blocks or runs</span></div>
+      <div class="key-item"><div class="key-badge" style="background:#2a5a2a;color:#ccc">G</div><span>Guards — protect left &amp; right</span></div>
+      <div class="key-item"><div class="key-badge" style="background:#2a5a2a;color:#ccc">T</div><span>Tackles — outside edge protection</span></div>
+    </div>
+  </div>
+  <div class="legend">
+    <h3>📋 All 9 Routes Quick Reference</h3>
+    <div class="legend-grid" id="legendGrid"></div>
+  </div>
+  <div class="tips">
+    <h3>🏆 Receiver Fundamentals</h3>
+    <ul>
+      <li>Run FULL SPEED to your break point — never slow down early</li>
+      <li>Plant hard on your outside foot before breaking inside, vice versa</li>
+      <li>Sell every route like it's a deep ball — beat the defender first</li>
+      <li>After your cut, eyes to QB immediately for the ball</li>
+      <li>Catch with your hands, not your body — soft hands win games!</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// CONSTANTS — carefully tuned to show 0-25yds + full backfield
+// ═══════════════════════════════════════════════════════════════════
+const W = 440, H = 500;
+const SC = 12, OX = 300, OY = 355, WRX = -11; // LOS at y=470px (more backfield space below)
+
+// WR-relative → canvas px
+const tc = (x,y) => [OX + (WRX + x) * SC, OY - y * SC];
+// field absolute → canvas px
+const fld = (x,y) => [OX + x * SC, OY - y * SC];
+
+// ═══════════════════════════════════════════════════════════════════
+// ROUTES — depths tuned to your yardage table
+// ═══════════════════════════════════════════════════════════════════
+const ROUTES = {
+  1: {n:1, name:"Flat", c:"#FF6B35",
+      path:[[0,0],[0,4],[-7.5,4]],
+      df:[0,3], dt:[-7.5,3], lbl:[0,14],
+      desc:"🏃 Take 2–3 quick steps upfield then BREAK hard left toward the sideline. Stay parallel to the LOS. Get out of bounds quickly! Great for short gains and stopping the clock."},
+  2: {n:2, name:"Slant", c:"#00CED1",
+      path:[[0,0],[0,6],[8.5,11]],
+      df:[0,3], dt:[8.5,10.5], lbl:[38,-8],
+      desc:"🏃 Take 1–3 steps upfield then CUT hard at 45° toward the inside. Look for the ball immediately — it's a quick throw! Attacks the gaps between defenders."},
+  3: {n:3, name:"Comeback", c:"#4169E1",
+      path:[[0,0],[0,11],[-5.5,9]],
+      df:[0,9], dt:[-5.5,5.5], lbl:[0,15],
+      desc:"🏃 Sprint full speed upfield 10–12 yards then PLANT and break back toward the QB at 45° toward the sideline. Timing with your QB is everything!"},
+  4: {n:4, name:"Curl", c:"#50C878",
+      path:[[0,0],[0,12],[2,11],[3,10],[2.5,9]],
+      df:[0,9], dt:[4.5,6.3], lbl:[40,4],
+      desc:"🏃 Sprint hard upfield 10–12 yards then CURL back and turn to face the QB. Don't just stop — pivot your whole body and give the QB a clear stationary target."},
+  5: {n:5, name:"Out", c:"#FFD700",
+      path:[[0,0],[0,9],[-8.5,9]],
+      df:[0,9], dt:[-8.5,9], lbl:[0,-16],
+      desc:"🏃 Run hard upfield 8–10 yards then make a SHARP 90° cut to the sideline. Plant on your inside foot and snap your hips. The cut must be crisp — never round it off!"},
+  6: {n:6, name:"In/Dig", c:"#DA70D6",
+      path:[[0,0],[0,11.5],[11,11.5]],
+      df:[0,9], dt:[11,9], lbl:[44,0],
+      desc:"🏃 Run upfield 10–12 yards past the safety then cut SHARP 90° toward the inside. Also called an In route. Attacks zone coverage across the middle perfectly."},
+  7: {n:7, name:"Corner", c:"#FF8C00",
+      path:[[0,0],[0,12],[-6.5,18]],
+      df:[0,9], dt:[-6.5,17.5], lbl:[-22,-13],
+      desc:"🏃 Run hard upfield 8–10 yards then break at 45° toward the CORNER of the end zone. Beats defenders shading too far inside. A top red zone route!"},
+  8: {n:8, name:"Post", c:"#98FB98",
+      path:[[0,0],[0,13],[9.5,19]],
+      df:[0,9], dt:[9.5,17.5], lbl:[40,-8],
+      desc:"🏃 Sprint upfield 8–10 yards then break at 45° toward the GOALPOST (inside). Attacks deep middle coverage. One of the most exciting routes in football!"},
+  9: {n:9, name:"Fade", c:"#FFB6C1",
+      path:[[0,0],[-0.5,8],[-1.5,14],[-2.5,20]],
+      df:[0,9], dt:[-1.5,19], lbl:[0,-15],
+      desc:"🏃 Release off the line and run STRAIGHT upfield drifting toward the sideline. The QB throws to your back shoulder away from the defender. The #1 red zone touchdown route!"}
+};
+
+// ═══════ State ════════════════════════════════════════════════════
+let sel=null, showAll=false, prog=0, playing=false, animId=null, spd=0.6, trail=[];
+
+// ═══════ Canvas ═══════════════════════════════════════════════════
+const canvas = document.getElementById('fieldCanvas');
+canvas.width = W; canvas.height = H;
+const ctx = canvas.getContext('2d');
+
+// ═══════ Path helpers ════════════════════════════════════════════
+function pLen(p){let l=0;for(let i=1;i<p.length;i++)l+=Math.hypot(p[i][0]-p[i-1][0],p[i][1]-p[i-1][1]);return l;}
+function pAt(p,t){
+  if(t<=0)return[...p[0]];if(t>=1)return[...p[p.length-1]];
+  let tgt=t*pLen(p),cum=0;
+  for(let i=1;i<p.length;i++){
+    const dx=p[i][0]-p[i-1][0],dy=p[i][1]-p[i-1][1],s=Math.hypot(dx,dy);
+    if(cum+s>=tgt){const r=s>0?(tgt-cum)/s:0;return[p[i-1][0]+r*dx,p[i-1][1]+r*dy];}
+    cum+=s;
+  }return[...p[p.length-1]];
+}
+
+// ═══════ Arrow ═══════════════════════════════════════════════════
+function arw(x,y,a,col,sz){
+  ctx.fillStyle=col;ctx.save();ctx.translate(x,y);ctx.rotate(a);
+  ctx.beginPath();ctx.moveTo(sz,0);ctx.lineTo(-sz*.65,sz*.5);ctx.lineTo(-sz*.65,-.5*sz);ctx.closePath();
+  ctx.fill();ctx.restore();
+}
+
+// ═══════ Pill label ═══════════════════════════════════════════════
+function pill(text,cx,cy,col,fs){
+  ctx.font=`bold ${fs}px Arial`;
+  const tw=ctx.measureText(text).width;
+  const pw=tw+10,ph=fs+6;
+  const safeCx=Math.max(pw/2+4,Math.min(W-pw/2-4,cx));
+  const safeCy=Math.max(ph/2+4,Math.min(H-ph/2-4,cy));
+  ctx.fillStyle='rgba(0,0,0,0.78)';
+  if(ctx.roundRect)ctx.roundRect(safeCx-pw/2,safeCy-ph/2,pw,ph,4);
+  else ctx.rect(safeCx-pw/2,safeCy-ph/2,pw,ph);
+  ctx.fill();
+  ctx.fillStyle=col;ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(text,safeCx,safeCy);
+  ctx.textBaseline='alphabetic';
+}
+
+// ═══════ Draw field ═══════════════════════════════════════════════
+function drawField(){
+  // === Madden-style grass: dark base + lighter alternating stripes ===
+  const g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#1a6b2a');g.addColorStop(0.5,'#17592a');g.addColorStop(1,'#1a6b2a');
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+
+  // Alternating mowed stripe pattern (every 5 yards)
+  for(let i=0;i<7;i++){
+    const sy=OY-(i+1)*SC*5, sh=SC*5;
+    if(sy+sh<0)break;
+    ctx.fillStyle=i%2===0?'rgba(0,0,0,0.10)':'rgba(255,255,255,0.055)';
+    ctx.fillRect(0,Math.max(0,sy),W,sh);
+  }
+
+  // Fine diagonal grass texture lines
+  ctx.save();
+  ctx.strokeStyle='rgba(255,255,255,0.04)';ctx.lineWidth=1;
+  for(let x=-H;x<W+H;x+=18){
+    ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x+H,H);ctx.stroke();
+  }
+  ctx.restore();
+
+  // Backfield with deeper dark tone
+  ctx.fillStyle='rgba(0,0,0,0.18)';ctx.fillRect(0,OY,W,145);
+
+  // Yard lines (5,10,15,20) — solid bright white
+  for(let y=5;y<=18;y+=5){
+    const[,cy]=fld(0,y);
+    ctx.strokeStyle='rgba(255,255,255,0.55)';ctx.lineWidth=1.5;ctx.setLineDash([]);
+    ctx.beginPath();ctx.moveTo(14,cy);ctx.lineTo(W-14,cy);ctx.stroke();
+    ctx.fillStyle='rgba(255,255,255,0.6)';ctx.font='bold 9px Arial';
+    ctx.textAlign='left';ctx.fillText(y+'yd',17,cy-3);
+    ctx.textAlign='right';ctx.fillText(y+'yd',W-17,cy-3);
+  }
+
+  // Hash marks every yard
+  for(let y=1;y<=16;y++){
+    const[,cy]=fld(0,y);ctx.strokeStyle='rgba(255,255,255,0.2)';ctx.lineWidth=1;
+    [-4.5,4.5].forEach(hx=>{const px=OX+hx*SC;ctx.beginPath();ctx.moveTo(px-4,cy);ctx.lineTo(px+4,cy);ctx.stroke();});
+  }
+
+  // LOS — bright gold
+  ctx.strokeStyle='#FFD700';ctx.lineWidth=3;
+  ctx.beginPath();ctx.moveTo(14,OY);ctx.lineTo(W-14,OY);ctx.stroke();
+  ctx.fillStyle='#FFD700';ctx.font='bold 9px Arial';ctx.textAlign='right';
+  ctx.fillText('LINE OF SCRIMMAGE',W-16,OY-5);
+
+  // === Formation players ===
+  function dp(fx,fy,lb,bg,bd,tc2,r){
+    const[px,py]=fld(fx,fy);
+    // glow
+    const glow=ctx.createRadialGradient(px,py,0,px,py,r+8);
+    glow.addColorStop(0,bd+'44');glow.addColorStop(1,'transparent');
+    ctx.fillStyle=glow;ctx.beginPath();ctx.arc(px,py,r+8,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=bg;ctx.strokeStyle=bd;ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(px,py,r,0,Math.PI*2);ctx.fill();ctx.stroke();
+    ctx.fillStyle=tc2;ctx.font=`bold ${r>11?9:8}px Arial`;ctx.textAlign='center';
+    ctx.textBaseline='middle';ctx.fillText(lb,px,py);ctx.textBaseline='alphabetic';
+  }
+  [[-5.5,'LT'],[-3,'LG'],[0,'C'],[3,'RG'],[5.5,'RT']].forEach(([x,l])=>{
+    const iC=l==='C';
+    dp(x,0,l,iC?'#2a6a1a':'#1e3a1e',iC?'#66cc44':'#446644',iC?'#fff':'#99cc99',iC?12:10);
+  });
+  // QB with blue glow
+  const[qx,qy]=fld(0,-5);
+  dp(0,-5,'QB','#1a3a8a','#6699ff','#fff',13);
+  // RB with brown glow
+  dp(2.5,-8,'RB','#7a3a1a','#cc8855','#fff',11);
+  // Snap line
+  const[cx0,cy0]=fld(0,0);
+  ctx.strokeStyle='rgba(100,200,255,0.3)';ctx.lineWidth=1.5;ctx.setLineDash([4,3]);
+  ctx.beginPath();ctx.moveTo(cx0,cy0-12);ctx.lineTo(qx,qy-13);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='rgba(150,200,255,0.4)';ctx.font='bold 8px Arial';ctx.textAlign='right';
+  ctx.fillText('BACKFIELD',W-14,OY+60);
+
+  // WR (X)
+  const[wx,wy]=tc(0,0);
+  const wg=ctx.createRadialGradient(wx,wy,0,wx,wy,22);
+  wg.addColorStop(0,'rgba(255,255,255,0.22)');wg.addColorStop(1,'transparent');
+  ctx.fillStyle=wg;ctx.beginPath();ctx.arc(wx,wy,22,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#fff';ctx.strokeStyle='#FFD700';ctx.lineWidth=2.5;
+  ctx.beginPath();ctx.arc(wx,wy,12,0,Math.PI*2);ctx.fill();ctx.stroke();
+  ctx.fillStyle='#000';ctx.font='bold 11px Arial';ctx.textAlign='center';
+  ctx.textBaseline='middle';ctx.fillText('X',wx,wy);ctx.textBaseline='alphabetic';
+  ctx.fillStyle='#FFD700';ctx.font='bold 9px Arial';ctx.textAlign='center';
+  ctx.fillText('WR',wx,wy+22);
+}
+
+// ═══════ Route Tree Diagram ══════════════════════════════════════
+function drawTree(){
+  const[wx,wy]=tc(0,0);
+  const[hx,hy]=tc(0,9);
+  ctx.strokeStyle='rgba(255,255,255,0.55)';ctx.lineWidth=2.5;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(wx,wy-13);ctx.lineTo(hx,hy);ctx.stroke();
+  ctx.fillStyle='rgba(255,255,255,0.8)';
+  ctx.beginPath();ctx.arc(hx,hy,5,0,Math.PI*2);ctx.fill();
+  Object.values(ROUTES).forEach(r=>{
+    const[sx,sy]=tc(r.df[0],r.df[1]);
+    const[ex,ey]=tc(r.dt[0],r.dt[1]);
+    const ang=Math.atan2(ey-sy,ex-sx);
+    ctx.strokeStyle=r.c;ctx.lineWidth=3.5;ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(sx,sy);ctx.lineTo(ex,ey);ctx.stroke();
+    arw(ex,ey,ang,r.c,8);
+    pill(`${r.n} - ${r.name}`,ex+r.lbl[0],ey+r.lbl[1],r.c,10);
+  });
+}
+
+// ═══════ Animate Route ════════════════════════════════════════════
+function drawAnim(r,t){
+  const p=r.path,col=r.c,total=pLen(p),tgt=t*total;
+  ctx.strokeStyle=col+'44';ctx.lineWidth=2.5;ctx.setLineDash([5,5]);ctx.lineCap='round';
+  ctx.beginPath();
+  p.forEach((pt,i)=>{const[cx,cy]=tc(pt[0],pt[1]);i===0?ctx.moveTo(cx,cy):ctx.lineTo(cx,cy);});
+  ctx.stroke();ctx.setLineDash([]);
+  ctx.strokeStyle=col;ctx.lineWidth=4.5;ctx.lineCap='round';ctx.lineJoin='round';
+  ctx.beginPath();
+  let cum=0;const[sx,sy]=tc(p[0][0],p[0][1]);ctx.moveTo(sx,sy);
+  for(let i=1;i<p.length;i++){
+    const dx=p[i][0]-p[i-1][0],dy=p[i][1]-p[i-1][1],seg=Math.hypot(dx,dy);
+    if(cum+seg<=tgt){const[cx,cy]=tc(p[i][0],p[i][1]);ctx.lineTo(cx,cy);cum+=seg;}
+    else{const s=seg>0?(tgt-cum)/seg:0;const[cx,cy]=tc(p[i-1][0]+s*dx,p[i-1][1]+s*dy);ctx.lineTo(cx,cy);break;}
+  }
+  ctx.stroke();
+  if(t>0.08){
+    const pt1=pAt(p,Math.min(t,.999)),pt2=pAt(p,Math.max(0,t-.08));
+    const[ex,ey]=tc(pt1[0],pt1[1]),[ex2,ey2]=tc(pt2[0],pt2[1]);
+    arw(ex,ey,Math.atan2(ey-ey2,ex-ex2),col,9);
+  }
+  const bpL=Math.hypot(p[1][0]-p[0][0],p[1][1]-p[0][1]);
+  if(tgt>=bpL&&p.length>2){
+    const[bx,by]=tc(p[1][0],p[1][1]);
+    ctx.fillStyle='#fff';ctx.strokeStyle=col;ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(bx,by,5,0,Math.PI*2);ctx.fill();ctx.stroke();
+  }
+  trail.forEach((tp,i)=>{
+    const a=Math.floor((i/trail.length)*130).toString(16).padStart(2,'0');
+    const[tx,ty]=tc(tp[0],tp[1]);
+    ctx.fillStyle=col+a;ctx.beginPath();ctx.arc(tx,ty,3*(i/trail.length),0,Math.PI*2);ctx.fill();
+  });
+  const[px,py]=tc(...pAt(p,t));
+  const grd=ctx.createRadialGradient(px,py,0,px,py,20);
+  grd.addColorStop(0,col+'55');grd.addColorStop(1,'transparent');
+  ctx.fillStyle=grd;ctx.beginPath();ctx.arc(px,py,20,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=col;ctx.strokeStyle='#fff';ctx.lineWidth=2.5;
+  ctx.beginPath();ctx.arc(px,py,12,0,Math.PI*2);ctx.fill();ctx.stroke();
+  ctx.fillStyle='#000';ctx.font='bold 9px Arial';ctx.textAlign='center';
+  ctx.textBaseline='middle';ctx.fillText('WR',px,py);ctx.textBaseline='alphabetic';
+  const endPt=p[p.length-1];
+  const[endX,endY]=tc(endPt[0],endPt[1]);
+  const[qbx,qby]=fld(0,-5);
+  const tBrk=bpL/total,tThrow=tBrk+0.05;
+  if(t>=tThrow&&t<0.98){
+    const bT=Math.min(1,(t-tThrow)/(1-tThrow));
+    const bx=qbx+bT*(endX-qbx);
+    const by=(qby-13)+bT*(endY-(qby-13))-Math.sin(bT*Math.PI)*30;
+    ctx.font='14px Arial';ctx.textAlign='center';ctx.fillText('🏈',bx,by);
+  }
+  if(t>=0.98){
+    ctx.font='15px Arial';ctx.textAlign='center';ctx.fillText('🏈',endX,endY-28);
+    ctx.shadowBlur=10;ctx.shadowColor='#FFD700';
+    ctx.fillStyle='#FFD700';ctx.font='bold 13px Arial';
+    ctx.fillText('🙌 CATCH!',endX,endY-46);
+    ctx.shadowBlur=0;
+  }
+}
+
+// ═══════ Render ═══════════════════════════════════════════════════
+function render(){
+  ctx.clearRect(0,0,W,H);
+  drawField();
+  if(showAll)drawTree();
+  else if(sel)drawAnim(sel,prog/100);
+}
+
+// ═══════ UI ═══════════════════════════════════════════════════════
+const btns=document.getElementById('routeButtons');
+Object.values(ROUTES).forEach(r=>{
+  const b=document.createElement('div');
+  b.className='route-btn';b.id=`b${r.n}`;
+  b.innerHTML=`<span class="num" style="color:${r.c}">${r.n}</span><span class="name">${r.name}</span>`;
+  b.addEventListener('click',()=>pick(r.n));btns.appendChild(b);
+});
+const ab=document.createElement('div');
+ab.className='show-all-btn';ab.id='aBtn';
+ab.innerHTML='🗺 Show All Routes';
+ab.addEventListener('click',togAll);btns.appendChild(ab);
+
+document.getElementById('legendGrid').innerHTML=
+  Object.values(ROUTES).map(r=>`<div class="legend-item"><span class="legend-dot" style="background:${r.c}"></span><span>${r.n}. ${r.name}</span></div>`).join('');
+
+function stopA(){if(animId){cancelAnimationFrame(animId);animId=null;}playing=false;document.getElementById('playBtn').textContent='▶ Play';}
+
+function pick(num){
+  stopA();sel=ROUTES[num];showAll=false;prog=0;trail=[];
+  document.getElementById('progressSlider').value=0;
+  document.querySelectorAll('.route-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(`b${num}`).classList.add('active');
+  document.getElementById('aBtn').classList.remove('active');
+  document.getElementById('routeTitle').textContent=`Route ${num}: ${sel.name}`;
+  document.getElementById('routeTitle').style.color=sel.c;
+  document.getElementById('routeDesc').className='route-description';
+  document.getElementById('routeDesc').textContent=sel.desc;
+  document.getElementById('playBtn').disabled=false;
+  render();
+}
+
+function togAll(){
+  showAll=!showAll;stopA();prog=0;
+  document.getElementById('aBtn').classList.toggle('active',showAll);
+  document.getElementById('playBtn').disabled=true;
+  if(showAll){
+    document.querySelectorAll('.route-btn').forEach(b=>b.classList.remove('active'));
+    sel=null;
+    document.getElementById('routeTitle').textContent='Full Route Tree — All 9 Routes';
+    document.getElementById('routeTitle').style.color='#FFD700';
+    document.getElementById('routeDesc').className='route-description';
+    document.getElementById('routeDesc').textContent='All 9 routes from the WR position. Tap any route number to animate it individually.';
+  }
+  render();
+}
+
+function loop(){
+  if(!playing||!sel)return;
+  prog+=spd;
+  if(prog>=100){prog=100;document.getElementById('progressSlider').value=100;stopA();render();return;}
+  document.getElementById('progressSlider').value=prog;
+  trail.push(pAt(sel.path,prog/100));
+  if(trail.length>22)trail.shift();
+  render();animId=requestAnimationFrame(loop);
+}
+
+document.getElementById('playBtn').addEventListener('click',()=>{
+  if(!sel)return;
+  if(playing){stopA();return;}
+  if(prog>=100){prog=0;trail=[];document.getElementById('progressSlider').value=0;}
+  playing=true;document.getElementById('playBtn').textContent='⏸ Pause';loop();
+});
+document.getElementById('resetBtn').addEventListener('click',()=>{stopA();prog=0;trail=[];document.getElementById('progressSlider').value=0;render();});
+document.getElementById('progressSlider').addEventListener('input',e=>{
+  stopA();prog=parseFloat(e.target.value);
+  if(sel){trail=[];for(let i=0;i<=20;i++)trail.unshift(pAt(sel.path,Math.max(0,prog/100-i*0.012)));}
+  render();
+});
+document.querySelectorAll('.speed-btn').forEach(b=>{
+  b.addEventListener('click',()=>{document.querySelectorAll('.speed-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');spd=parseFloat(b.dataset.speed);});
+});
+
+render();
+</script>
+</body>
+</html>
